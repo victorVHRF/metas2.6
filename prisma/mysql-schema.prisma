@@ -1,0 +1,80 @@
+// This is your Prisma schema file for MySQL,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/mysql-client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("MYSQL_DATABASE_URL")
+}
+
+// Modelos para MySQL
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relacionamento com clientes
+  clients   Client[]
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("products")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  company   String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relacionamento com usuário
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relacionamento com metas
+  goals     Goal[]
+
+  @@map("clients")
+}
+
+model Goal {
+  id        String   @id @default(cuid())
+  clientId  String
+  month     Int      // 1-12 para representar os meses
+  year      Int
+  tvGoal    Decimal  @default(0)
+  radioGoal Decimal  @default(0)
+  internetGoal Decimal @default(0)
+  totalGoal Decimal  // Soma dos três veículos
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relacionamento com cliente
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Índice único para evitar duplicatas de mês/ano por cliente
+  @@unique([clientId, month, year])
+  @@map("goals")
+}

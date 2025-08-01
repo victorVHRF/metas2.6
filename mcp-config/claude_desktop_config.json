@@ -1,0 +1,56 @@
+{
+  "mcpServers": {
+    "docker-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "metas_mcp_docker",
+        "python",
+        "-m",
+        "docker_mcp"
+      ]
+    },
+    "filesystem": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "metas_mcp_filesystem",
+        "mcp-server-filesystem",
+        "/workspace"
+      ]
+    },
+    "mysql-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "metas_mysql",
+        "mysql",
+        "-u",
+        "metas_user",
+        "-pmetas_password",
+        "-h",
+        "localhost",
+        "metas_mysql"
+      ]
+    },
+    "postgres-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "metas_postgres",
+        "psql",
+        "-U",
+        "metas_user",
+        "-d",
+        "metas_postgres"
+      ],
+      "env": {
+        "PGPASSWORD": "metas_password"
+      }
+    }
+  }
+}

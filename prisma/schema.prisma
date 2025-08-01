@@ -1,0 +1,36 @@
+// This is your main Prisma schema file for PostgreSQL,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+//
+// For MySQL models, see: ./mysql-schema.prisma
+// For PostgreSQL models, see: ./postgres-schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Configuração principal - PostgreSQL
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelos para PostgreSQL (principal)
+model Order {
+  id        String   @id @default(cuid())
+  userId    String
+  total     Decimal
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("orders")
+}
+
+model Analytics {
+  id        String   @id @default(cuid())
+  event     String
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@map("analytics")
+}
