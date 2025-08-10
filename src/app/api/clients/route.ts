@@ -12,7 +12,7 @@ const createClientSchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   zipCode: z.string().optional(),
-  userId: z.string().min(1, 'ID do usuário é obrigatório')
+  portfolioId: z.string().min(1, 'ID da carteira é obrigatório')
 })
 
 export async function GET(request: NextRequest) {
@@ -27,22 +27,54 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
+    const portfolioId = searchParams.get('portfolioId')
 
-    if (!userId) {
+    if (!userId && !portfolioId) {
       return NextResponse.json(
-        { error: 'ID do usuário é obrigatório' },
+        { error: 'ID do usuário ou ID da carteira é obrigatório' },
         { status: 400 }
       )
     }
 
-    const clients = await mysqlPrisma.client.findMany({
-      where: {
-        userId: userId
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    let clients
+    
+    if (portfolioId) {
+      // Buscar clientes de uma carteira específica
+      clients = await mysqlPrisma.client.findMany({
+        where: {
+          portfolioId: portfolioId
+        },
+        include: {
+          portfolio: {
+            include: {
+              user: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+    } else {
+      // Buscar todos os clientes de um usuário (através de suas carteiras)
+      clients = await mysqlPrisma.client.findMany({
+        where: {
+          portfolio: {
+            userId: userId
+          }
+        },
+        include: {
+          portfolio: {
+            include: {
+              user: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+    }
 
     return NextResponse.json(clients)
   } catch (error) {
@@ -69,21 +101,31 @@ export async function POST(request: NextRequest) {
     // Validar dados de entrada
     const validatedData = createClientSchema.parse(body)
 
-    // Verificar se o usuário existe
-    const user = await mysqlPrisma.user.findUnique({
-      where: { id: validatedData.userId }
+    // Verificar se a carteira existe
+    const portfolio = await mysqlPrisma.portfolio.findUnique({
+      where: { id: validatedData.portfolioId },
+      include: {
+        user: true
+      }
     })
 
-    if (!user) {
+    if (!portfolio) {
       return NextResponse.json(
-        { error: 'Usuário não encontrado' },
+        { error: 'Carteira não encontrada' },
         { status: 404 }
       )
     }
 
     // Criar o cliente
     const client = await mysqlPrisma.client.create({
-      data: validatedData
+      data: validatedData,
+      include: {
+        portfolio: {
+          include: {
+            user: true
+          }
+        }
+      }
     })
 
     return NextResponse.json(client, { status: 201 })

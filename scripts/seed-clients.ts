@@ -11,11 +11,15 @@ async function seedClients() {
 
     console.log('🌱 Iniciando seed de clientes...')
 
-    // Buscar todos os usuários existentes
-    const users = await mysqlPrisma.user.findMany()
+    // Buscar todas as carteiras existentes
+    const portfolios = await mysqlPrisma.portfolio.findMany({
+      include: {
+        user: true
+      }
+    })
     
-    if (users.length === 0) {
-      console.log('❌ Nenhum usuário encontrado. Execute primeiro o seed de usuários.')
+    if (portfolios.length === 0) {
+      console.log('❌ Nenhuma carteira encontrada. Execute primeiro o seed de carteiras.')
       return
     }
 
@@ -23,11 +27,21 @@ async function seedClients() {
     await mysqlPrisma.client.deleteMany()
     console.log('🗑️  Clientes existentes removidos')
 
-    // Criar clientes para cada usuário (5-15 clientes por usuário)
-    const clientsToCreate = []
+    // Criar clientes para cada carteira (3-8 clientes por carteira)
+    const clientsToCreate: {
+      name: string;
+      email: string;
+      phone: string;
+      company: string;
+      address: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      portfolioId: number;
+    }[] = [];
     
-    for (const user of users) {
-      const clientCount = faker.number.int({ min: 5, max: 15 })
+    for (const portfolio of portfolios) {
+      const clientCount = faker.number.int({ min: 3, max: 8 })
       
       for (let i = 0; i < clientCount; i++) {
         clientsToCreate.push({
@@ -39,35 +53,52 @@ async function seedClients() {
           city: faker.location.city(),
           state: faker.location.state(),
           zipCode: faker.location.zipCode(),
-          userId: user.id
+          portfolioId: Number(portfolio.id)
         })
       }
     }
 
     // Inserir todos os clientes
     await mysqlPrisma.client.createMany({
-      data: clientsToCreate
+      data: clientsToCreate.map(client => ({
+        ...client,
+        portfolioId: String(client.portfolioId)
+      }))
     })
 
     console.log(`✅ ${clientsToCreate.length} clientes criados com sucesso!`)
-
-    // Mostrar estatísticas por usuário
-    console.log('\n📊 Estatísticas por usuário:')
-    for (const user of users) {
-      const clientCount = await mysqlPrisma.client.count({
-        where: { userId: user.id }
+    console.log(`📊 Distribuição por carteira:`)
+    
+    const portfolioGroups = portfolios.reduce((acc, portfolio) => {
+      const userKey = portfolio.user.name || portfolio.user.email
+      if (!acc[userKey]) acc[userKey] = {}
+      if (!acc[userKey][portfolio.vehicle]) acc[userKey][portfolio.vehicle] = 0
+      
+      const portfolioClients = clientsToCreate.filter(client => client.portfolioId === Number(portfolio.id))
+      acc[userKey][portfolio.vehicle] += portfolioClients.length
+      
+      return acc
+    }, {} as Record<string, Record<string, number>>)
+    
+    Object.entries(portfolioGroups).forEach(([userName, vehicles]) => {
+      console.log(`   - ${userName}:`)
+      Object.entries(vehicles).forEach(([vehicle, count]) => {
+        console.log(`     * ${vehicle}: ${count} clientes`)
       })
-      console.log(`👤 ${user.name} (${user.email}): ${clientCount} clientes`)
-    }
+    })
 
     // Mostrar alguns exemplos de clientes
     const sampleClients = await mysqlPrisma.client.findMany({
       take: 5,
       include: {
-        user: {
-          select: {
-            name: true,
-            email: true
+        portfolio: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                email: true
+              }
+            }
           }
         }
       }
@@ -76,7 +107,7 @@ async function seedClients() {
     console.log('\n📋 Exemplos de clientes criados:')
     sampleClients.forEach((client, index) => {
       console.log(`${index + 1}. ${client.name} (${client.email}) - ${client.company}`)
-      console.log(`   👤 Usuário: ${client.user.name} (${client.user.email})`)
+      console.log(`   📁 Carteira: ${client.portfolio.vehicle} - Usuário: ${client.portfolio.user.name} (${client.portfolio.user.email})`)
     })
 
   } catch (error) {

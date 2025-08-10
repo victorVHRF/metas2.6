@@ -19,8 +19,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  // Relacionamento com clientes
-  clients   Client[]
+  // Relacionamento com carteiras
+  portfolios Portfolio[]
 
   @@map("users")
 }
@@ -36,16 +36,10 @@ model Product {
   @@map("products")
 }
 
-model Client {
+model Portfolio {
   id        String   @id @default(cuid())
-  name      String
-  email     String
-  phone     String?
-  company   String?
-  address   String?
-  city      String?
-  state     String?
-  zipCode   String?
+  name      String   // Nome da carteira (ex: "TV Carteira 1", "Rádio Carteira 2")
+  vehicle   String   // "TV", "RADIO", "INTERNET"
   userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -53,28 +47,56 @@ model Client {
   // Relacionamento com usuário
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  // Relacionamento com clientes
+  clients   Client[]
+  
   // Relacionamento com metas
   goals     Goal[]
+
+  @@map("portfolios")
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  portfolioId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamento com carteira
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  
+  // Relacionamento com metas
+  goals       Goal[]
 
   @@map("clients")
 }
 
 model Goal {
-  id        String   @id @default(cuid())
-  clientId  String
-  month     Int      // 1-12 para representar os meses
-  year      Int
-  tvGoal    Decimal  @default(0)
-  radioGoal Decimal  @default(0)
-  internetGoal Decimal @default(0)
-  totalGoal Decimal  // Soma dos três veículos
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  clientId    String?
+  portfolioId String?
+  month       Int      // 1-12 para representar os meses
+  year        Int
+  amount      Decimal  @default(0) // Meta para este cliente/carteira específica
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
-  // Relacionamento com cliente
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  // Relacionamento com cliente (opcional para metas individuais)
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
-  // Índice único para evitar duplicatas de mês/ano por cliente
+  // Relacionamento com carteira (para metas totais da carteira)
+  portfolio   Portfolio? @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  
+  // Índice único para evitar duplicatas
   @@unique([clientId, month, year])
+  @@unique([portfolioId, month, year])
   @@map("goals")
 }
